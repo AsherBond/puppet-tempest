@@ -168,8 +168,6 @@
 #   Defaults to false
 #  [*ironic_available*]
 #   Defaults to false
-#  [*ironic_inspector_available*]
-#   Defaults to false
 #  [*octavia_available*]
 #   Defaults to false
 #  [*barbican_available*]
@@ -193,8 +191,6 @@
 #  [*placement_enforce_scope*]
 #   Defaults to $facts['os_service_default']
 #  [*ironic_enforce_scope*]
-#   Defaults to $facts['os_service_default']
-#  [*ironic_inspector_enforce_scope*]
 #   Defaults to $facts['os_service_default']
 #  [*designate_enforce_scope*]
 #   Defaults to $facts['os_service_default']
@@ -247,8 +243,6 @@
 #  [*metric_catalog_type*]
 #   Defaults to $facts['os_service_default']
 #  [*baremetal_catalog_type*]
-#   Defaults to $facts['os_service_default']
-#  [*baremetal_introspection_catalog_type*]
 #   Defaults to $facts['os_service_default']
 #  [*dns_catalog_type*]
 #   Defaults to $facts['os_service_default']
@@ -348,6 +342,12 @@
 #  [*run_service_broker_tests*]
 #   Defaults to undef
 #  [*run_ssh*]
+#   Defaults to undef
+#  [*ironic_inspector_available*]
+#   Defaults to undef
+#  [*ironic_inspector_enforce_scope*]
+#   Defaults to undef
+#  [*baremetal_introspection_catalog_type*]
 #   Defaults to undef
 #
 class tempest (
@@ -471,7 +471,6 @@ class tempest (
   Boolean $swift_available                  = false,
   Boolean $trove_available                  = false,
   Boolean $ironic_available                 = false,
-  Boolean $ironic_inspector_available       = false,
   Boolean $watcher_available                = false,
   Boolean $zaqar_available                  = false,
   Boolean $mistral_available                = false,
@@ -489,7 +488,6 @@ class tempest (
   $nova_enforce_scope                       = $facts['os_service_default'],
   $placement_enforce_scope                  = $facts['os_service_default'],
   $ironic_enforce_scope                     = $facts['os_service_default'],
-  $ironic_inspector_enforce_scope           = $facts['os_service_default'],
   $designate_enforce_scope                  = $facts['os_service_default'],
   $octavia_enforce_scope                    = $facts['os_service_default'],
   $manila_enforce_scope                     = $facts['os_service_default'],
@@ -518,7 +516,6 @@ class tempest (
   $alarming_catalog_type                    = $facts['os_service_default'],
   $metric_catalog_type                      = $facts['os_service_default'],
   $baremetal_catalog_type                   = $facts['os_service_default'],
-  $baremetal_introspection_catalog_type     = $facts['os_service_default'],
   $dns_catalog_type                         = $facts['os_service_default'],
   $load_balancer_catalog_type               = $facts['os_service_default'],
   $share_catalog_type                       = $facts['os_service_default'],
@@ -560,12 +557,18 @@ class tempest (
   $auth_version                             = undef,
   $run_service_broker_tests                 = undef,
   $run_ssh                                  = undef,
+  $ironic_inspector_available               = undef,
+  $ironic_inspector_enforce_scope           = undef,
+  $baremetal_introspection_catalog_type     = undef,
 ) {
   [
     'glance_v2',
     'identity_uri',
     'keystone_v3',
     'auth_version',
+    'ironic_inspector_available',
+    'ironic_inspector_enforce_scope',
+    'baremetal_introspection_catalog_type',
   ].each |String $deprecated_opt| {
     if getvar($deprecated_opt) != undef {
       warning("The ${deprecated_opt} parameter has been deprecated and will be removed in a future release")
@@ -728,7 +731,6 @@ class tempest (
     'service_available/swift':                         value => $swift_available;
     'service_available/trove':                         value => $trove_available;
     'service_available/ironic':                        value => $ironic_available;
-    'service_available/ironic_inspector':              value => $ironic_inspector_available;
     'service_available/watcher':                       value => $watcher_available;
     'service_available/zaqar':                         value => $zaqar_available;
     'service_available/octavia':                       value => $octavia_available;
@@ -738,7 +740,6 @@ class tempest (
     'enforce_scope/designate':                         value => $designate_enforce_scope;
     'enforce_scope/glance':                            value => $glance_enforce_scope;
     'enforce_scope/ironic':                            value => $ironic_enforce_scope;
-    'enforce_scope/ironic_inspector':                  value => $ironic_inspector_enforce_scope;
     'enforce_scope/keystone':                          value => $keystone_enforce_scope;
     'identity-feature-enabled/enforce_scope':          value => $keystone_enforce_scope;
     'enforce_scope/manila':                            value => $manila_enforce_scope;
@@ -769,7 +770,6 @@ class tempest (
     'alarming/catalog_type':                           value => $alarming_catalog_type;
     'metric/catalog_type':                             value => $metric_catalog_type;
     'baremetal/catalog_type':                          value => $baremetal_catalog_type;
-    'baremetal_introspection/catalog_type':            value => $baremetal_introspection_catalog_type;
     'dns/catalog_type':                                value => $dns_catalog_type;
     'load_balancer/catalog_type':                      value => $load_balancer_catalog_type;
     'share/catalog_type':                              value => $share_catalog_type;
@@ -822,6 +822,8 @@ class tempest (
   # TODO(tkajinam): Remove this after 2026.1 release
   tempest_config {
     'service_broker/run_service_broker_tests': ensure => absent;
+    'service_available/ironic_inspector':      ensure => absent;
+    'enforce_scope/ironic_inspector':          ensure => absent;
   }
 
   oslo::concurrency { 'tempest_config': lock_path => $lock_path }
@@ -863,7 +865,7 @@ class tempest (
         tag    => ['openstack', 'tempest-package'],
       }
     }
-    if ($ironic_available or $ironic_inspector_available) {
+    if $ironic_available {
       package { 'python-ironic-tests-tempest':
         ensure => present,
         name   => $tempest::params::python_ironic_tests,

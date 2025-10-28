@@ -1,0 +1,9 @@
+---
+deprecations:
+  - |
+    The following ``tempest`` class parameters are deprecated and have no
+    effect.
+
+    - ``ironic_inspector_available``
+    - ``ironic_inspector_enforce_scope``
+    - ``baremetal_introspection_catalog_type``
